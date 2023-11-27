@@ -3,7 +3,6 @@ from PIL import *
 from random import *
 
 # flood fill
-# 11 mines?
 # 3 difficulties
 
 # ---------------------------------------------------------------------------------------------
@@ -18,8 +17,8 @@ def onAppStart(app):
     app.boardWidth = 250
     app.boardHeight = 300
     app.cellBorderWidth = 2
-    app.numMines = 11
-    app.mineLocations = ["hi"]
+    app.numMines = (app.rows * app.cols * 2) // 5
+    app.mineLocations = []
     app.board = [([None] * app.cols) for row in range(app.rows)]
     app.field = dict()
 
@@ -27,6 +26,8 @@ def redrawAll(app):
     drawBoard(app)
     drawBoardBorder(app)
     minePlacement(app)
+    createField(app)
+    determineNumber(app, 2, 2)
 
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
@@ -41,6 +42,11 @@ def drawBoard(app):
         for col in range(app.cols):
             color = app.board[row][col]
             drawCell(app, row, col, color)
+            print((row, col))
+            if (row, col) in app.field:
+                print(True)
+                label = determineNumber(app, row, col)
+                
 
 def drawBoardBorder(app):
   drawRect(app.boardLeft, app.boardTop, app.boardWidth, app.boardHeight,
@@ -53,7 +59,7 @@ def drawCell(app, row, col, color):
     drawRect(cellLeft, cellTop, cellWidth, cellHeight,
              fill=color, border='black',
              borderWidth=app.cellBorderWidth)
-    # drawLabel(f"{app.field[row][col]}", cellLeft + (cellWidth / 2), cellTop + (cellHeight / 2), align = "center")
+    
 
 def getCellLeftTop(app, row, col):
     cellWidth, cellHeight = getCellSize(app)
@@ -83,8 +89,22 @@ def minePlacement(app):
 def createField(app):
     for locationX, locationY in app.mineLocations:
         app.field[(locationX, locationY)] = Mine(locationX, locationY)
+       # print(app.field[(locationX, locationY)])
+    for row in range(app.rows):
+        for col in range(app.cols):
+            if not (row, col) in app.mineLocations:
+                app.field[(row, col)] = Safe(row, col)
+    print(app.field)
 
-
+def drawField(app):
+    for row in range(app.rows):
+        for col in range(app.cols):
+            label = determineNumber(app, row, col)
+            print
+            drawLabel(f"{label}", 50, 50)
+            cellLeft, cellTop = getCellLeftTop(app, row, col)
+            cellWidth, cellHeight = getCellSize(app)
+            drawLabel(f"{label}", cellLeft + (cellWidth / 2), cellTop + (cellHeight / 2), align = "center")
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
 
@@ -99,15 +119,17 @@ def createField(app):
 # MINE CLASS
 # ---------------------------------------------------------------------------------------------
 class Mine:
-    def __init__(self, mineX, mineY):
-        self.mineX = mineX
-        self.mineY = mineY
+    def __init__(self, locX, locY):
+        self.locX = locX
+        self.locY = locY
 
     def __repr__(self):
-        return ("Mine")
+        return (f"Mine - {self.locX, self.locY}")
 
     def __eq__(self, other):
-        pass
+        if not (isinstance(other, Safe) or isinstance(other, Mine)):
+            return False
+        return (self.locX == other.locX) and (self.locY == other.locY)
 
     def __hash__(self):
         return hash(str(self))
@@ -116,14 +138,17 @@ class Mine:
 # SAFE CLASS
 # ---------------------------------------------------------------------------------------------
 class Safe:
-    def __init__(self):
-        pass
+    def __init__(self, locX, locY):
+        self.locX = locX
+        self.locY = locY
 
     def __repr__(self):
-        return ("Safe")
+        return (f"Safe - {self.locX, self.locY}")
 
     def __eq__(self, other):
-        pass
+        if not (isinstance(other, Safe) or isinstance(other, Mine)):
+            return False
+        return (self.locX == other.locX) and (self.locY == other.locY)
 
     def __hash__(self):
         return hash(str(self))
@@ -137,21 +162,21 @@ def isLegalDirection(app, dX, dY, originalX, originalY):
         return False
     return True
 
-def determineNumber(app, L, currRow, currCol):
+def determineNumber(app, currRow, currCol):
     directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
     count = 0
     for dX, dY in directions:
-        if isLegalDirection(L, dX, dY, currRow, currCol):
-            currBox = app.board[currRow + dX][currCol + dY]
-            if currBox == "Mine":
+        if isLegalDirection(app, dX, dY, currRow, currCol):
+            locationX, locationY = currRow + dX, currCol + dY
+            if isinstance(app.field[(locationX, locationY)], Mine):
                 count += 1
     return count
 
-# next write stuff to determine if in every direction mine or not by checking if the move is legal first 
-# and then seeing if there's a mine object there
-
 def main():
     runApp()
+    print(app.mineLocations)
     
 
 main()
+
+print(determineNumber(app, 2, 2))

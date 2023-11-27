@@ -12,7 +12,7 @@ from random import *
 def onAppStart(app):
     app.rows = 6
     app.cols = 5
-    app.boardLeft = 75
+    app.boardLeft = 75 
     app.boardTop = 50
     app.boardWidth = 250
     app.boardHeight = 300
@@ -21,13 +21,16 @@ def onAppStart(app):
     app.mineLocations = []
     app.board = [([None] * app.cols) for row in range(app.rows)]
     app.field = dict()
+    app.flagging = False
+    app.uncover = True
 
 def redrawAll(app):
     drawBoard(app)
     drawBoardBorder(app)
     minePlacement(app)
     createField(app)
-    determineNumber(app, 2, 2)
+    drawField(app)
+    # determineNumber(app, 2, 2)
 
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
@@ -42,9 +45,7 @@ def drawBoard(app):
         for col in range(app.cols):
             color = app.board[row][col]
             drawCell(app, row, col, color)
-            print((row, col))
             if (row, col) in app.field:
-                print(True)
                 label = determineNumber(app, row, col)
                 
 
@@ -89,26 +90,47 @@ def minePlacement(app):
 def createField(app):
     for locationX, locationY in app.mineLocations:
         app.field[(locationX, locationY)] = Mine(locationX, locationY)
-       # print(app.field[(locationX, locationY)])
     for row in range(app.rows):
         for col in range(app.cols):
             if not (row, col) in app.mineLocations:
                 app.field[(row, col)] = Safe(row, col)
-    print(app.field)
+    # print(app.field)
 
 def drawField(app):
     for row in range(app.rows):
         for col in range(app.cols):
-            label = determineNumber(app, row, col)
-            print
-            drawLabel(f"{label}", 50, 50)
+            #print((app.field[(row, col)]).getState())
+            if (app.field[(row, col)]).getState() == ("flagged"):
+                label = "F"
+            elif (app.field[(row, col)]).getState() == ("covered"):
+                label = "X"
+            else:
+                if isinstance(app.field[(row, col)], Mine):
+                    label = "No"
+                else:
+                    label = determineNumber(app, row, col)
             cellLeft, cellTop = getCellLeftTop(app, row, col)
             cellWidth, cellHeight = getCellSize(app)
             drawLabel(f"{label}", cellLeft + (cellWidth / 2), cellTop + (cellHeight / 2), align = "center")
+    
+def isLegalDirection(app, dX, dY, originalX, originalY):
+    newX = originalX + dX
+    newY = originalY + dY
+    if ((newX < 0 or newX >= app.cols) or (newY < 0 or newY >= app.rows)):
+        return False
+    return True
+
+def determineNumber(app, currRow, currCol):
+    directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
+    count = 0
+    for dX, dY in directions:
+        if isLegalDirection(app, dX, dY, currRow, currCol):
+            locationX, locationY = currRow + dX, currCol + dY
+            if (locationX, locationY) in app.field and isinstance(app.field[(locationX, locationY)], Mine):
+                count += 1
+    return count
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
-
-
 
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
@@ -122,6 +144,7 @@ class Mine:
     def __init__(self, locX, locY):
         self.locX = locX
         self.locY = locY
+        self.state = "covered"
 
     def __repr__(self):
         return (f"Mine - {self.locX, self.locY}")
@@ -134,6 +157,11 @@ class Mine:
     def __hash__(self):
         return hash(str(self))
 
+    def setState(self, state):
+        self.state = state
+
+    def getState(self):
+        return self.state
 # ---------------------------------------------------------------------------------------------
 # SAFE CLASS
 # ---------------------------------------------------------------------------------------------
@@ -141,6 +169,7 @@ class Safe:
     def __init__(self, locX, locY):
         self.locX = locX
         self.locY = locY
+        self.state = "covered"
 
     def __repr__(self):
         return (f"Safe - {self.locX, self.locY}")
@@ -152,25 +181,53 @@ class Safe:
 
     def __hash__(self):
         return hash(str(self))
+    
+    def setState(self, state):
+        self.state = state
+
+    def getState(self):
+        return self.state
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
 
-def isLegalDirection(app, dX, dY, originalX, originalY):
-    newX = originalX + dX
-    newY = originalY + dY
-    if ((newX < 0 or newX > app.cols) or (newY < 0 or newY > app.rows)):
-        return False
-    return True
+# ---------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------
 
-def determineNumber(app, currRow, currCol):
-    directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
-    count = 0
-    for dX, dY in directions:
-        if isLegalDirection(app, dX, dY, currRow, currCol):
-            locationX, locationY = currRow + dX, currCol + dY
-            if isinstance(app.field[(locationX, locationY)], Mine):
-                count += 1
-    return count
+# ---------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------
+# MOUSE/KEY FUNCTIONS
+# ---------------------------------------------------------------------------------------------
+def onMousePress(app, mouseX, mouseY):
+    if (mouseX > app.boardLeft and mouseX < app.boardLeft + app.boardWidth and mouseY > app.boardTop and mouseY < app.boardTop + app.boardHeight):
+        xVal, yVal = getBoxToClick(app, mouseX, mouseY)
+        if app.flagging == True:
+            (app.field[(xVal, yVal)]).setState("flagged")
+            print((app.field[(xVal, yVal)]).getState())
+
+
+def onKeyHold(app, keys):
+    if len(keys) == 1 and "f" in keys:
+        app.uncover = False
+        app.flagging = not app.flagging
+    elif len(keys) == 1 and "u" in keys:
+        app.uncover = True
+    #     app.flagging = False
+    # print(app.flagging)
+
+# ---------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------
+# MOUSE HELPER FUNCTIONS
+# ---------------------------------------------------------------------------------------------
+def getBoxToClick(app, mouseX, mouseY):
+    xVal = (mouseX - app.boardLeft) // (app.boardWidth // app.cols)
+    yVal = (mouseY - app.boardTop) // (app.boardHeight  // app.rows)
+    return xVal, yVal
+
+# ---------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------
 
 def main():
     runApp()
@@ -178,5 +235,3 @@ def main():
     
 
 main()
-
-print(determineNumber(app, 2, 2))

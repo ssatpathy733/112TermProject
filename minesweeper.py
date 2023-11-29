@@ -13,7 +13,7 @@ def onAppStart(app):
     app.rows = 6
     app.cols = 5
     app.boardLeft = 75 
-    app.boardTop = 50
+    app.boardTop = 80
     app.boardWidth = 250
     app.boardHeight = 300
     app.cellBorderWidth = 2
@@ -27,10 +27,10 @@ def onAppStart(app):
     minePlacement(app)
     createField(app)
 
-
 def redrawAll(app):
-    drawRect(0, 0, app.width, app.height, fill="blue")
-    drawRect(app.boardLeft, app.boardTop, app.boardWidth, app.boardHeight, fill="purple")
+    drawRect(0, 0, app.width, app.height, fill=rgb(151, 182, 232))
+    drawRect(app.boardLeft, app.boardTop, app.boardWidth, app.boardHeight, fill=rgb(77, 63, 107))
+    drawLabel("MINESWEEPER!", app.width // 2, 40, align="center", size = 45, fill="white", border=rgb(77, 63, 107))
     drawBoard(app)
     drawBoardBorder(app)
     drawField(app)

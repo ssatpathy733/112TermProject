@@ -4,7 +4,6 @@ from random import *
 
 # flood fill
 # 3 difficulties
-# fix determine number tomorrow!
 
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
@@ -20,7 +19,7 @@ def onAppStart(app):
     app.width = 800
     app.height = 800
     app.cellBorderWidth = 2
-    app.numMines = (app.rows * app.cols * 2) // 5
+    app.numMines = (app.rows * app.cols * 2) // 10
     app.flagsPlaced = set()
     app.flagsLeft = app.numMines - len(app.flagsPlaced) 
     app.mineLocations = []
@@ -32,7 +31,7 @@ def onAppStart(app):
     app.gameWon = False
     app.gameStart = False
     app.firstMineCoords = (-1, -1)
-    app.oppositeBoundCoords = (-1, -1)
+    app.oppositeMineCoords = (-1, -1)
     # minePlacement(app)
     # createField(app)
 
@@ -41,11 +40,11 @@ def firstClick(app, clickX, clickY):
     firstMineY = None
     while firstMineX == None:
         toAddX = randrange(-1*(app.cols // 3), app.cols // 3)
-        if isLegalCol(app, toAddX, clickX):
+        if toAddX != 0 and isLegalCol(app, toAddX, clickX):
             firstMineX = clickX + toAddX
     while firstMineY == None:
         toAddY = randrange(-1*(app.rows // 3), app.rows // 3)
-        if isLegalCol(app, toAddY, clickY):
+        if toAddY != 0 and isLegalCol(app, toAddY, clickY):
             firstMineY = clickY + toAddY
     # print(firstMineX, firstMineY)
     app.firstMineCoords = (firstMineX, firstMineY)
@@ -63,9 +62,9 @@ def firstClick(app, clickX, clickY):
         otherMineY = 0
     else:
         otherMineY = (clickX + (-1 * firstMineX))
-    app.OppositeMineCoords = (otherMineX, otherMineY)
+    app.oppositeMineCoords = (otherMineX, otherMineY)
     print(app.firstMineCoords)
-    print(app.OppositeMineCoords)
+    print(app.oppositeMineCoords)
     minePlacement(app)
     createField(app)
     app.gameStart = True
@@ -129,15 +128,18 @@ def getCellSize(app):
 # CREATING THE FIELD
 # ---------------------------------------------------------------------------------------------
 def minePlacement(app):
-    firstX, firstY = app.firstMineCoords 
-    otherX, otherY = app.oppositeBoundCoords 
+    (firstX, firstY) = app.firstMineCoords 
+    (otherX, otherY) = app.oppositeMineCoords 
+    for col in range(min(firstX, otherX), max(firstX, otherX) + 1):
+        for row in range(min(firstY, otherY), max(firstY, otherY) + 1):
+            app.field[(row, col)] = Safe(col, row)
+            print(app.field[(row, col)])
+    # print(app.field)
     while len(app.mineLocations) < app.numMines:
         randRow = randrange(0, app.cols)
         randCol = randrange(0, app.rows)
-        if (((randRow < firstX and randRow > otherX) or (randRow > firstX and randRow < otherX)) 
-            and ((randCol < firstY and randCol > otherY) or (randCol > firstY and randCol < otherY))): 
-            if not (randRow, randCol) in app.mineLocations:
-                (app.mineLocations).append((randRow, randCol))
+        if not (randRow, randCol) in app.field and not (randRow, randCol) in app.mineLocations:
+            (app.mineLocations).append((randRow, randCol))
     print(app.mineLocations)
     return app.mineLocations
 
@@ -269,6 +271,11 @@ def onMousePress(app, mouseX, mouseY):
         if (mouseX > app.boardLeft and mouseX < app.boardLeft + app.boardWidth and mouseY > app.boardTop and mouseY < app.boardTop + app.boardHeight):
             xVal, yVal = getBoxToClick(app, mouseX, mouseY)
             if app.gameStart == False:
+                directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (0, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
+                for dX, dY in directions:
+                    if isLegalDirection(app, dX, dY, xVal, yVal):
+                        locationY, locationX = xVal + dX, yVal + dY
+                        app.field[(locationY, locationX)] = Safe(locationY, locationX)
                 firstClick(app, xVal, yVal)
                 app.gameStart = True
             # print(xVal, yVal)

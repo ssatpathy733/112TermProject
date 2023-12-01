@@ -32,6 +32,11 @@ def onAppStart(app):
     app.gameStart = False
     app.firstMineCoords = (-1, -1)
     app.oppositeMineCoords = (-1, -1)
+    app.showAboutGame = False
+    app.showHowToPlay = False
+    app.cInfo = 50
+    app.cHowTo = app.width - 50
+    app.cR = 30
     # minePlacement(app)
     # createField(app)
 
@@ -76,12 +81,20 @@ def redrawAll(app):
     drawLabel(f"Flags left: {app.flagsLeft}", app.width // 2, 55, align="center", fill="white", size = 25)
     drawBoard(app)
     drawBoardBorder(app)
+    drawCircle(app.cInfo, app.cInfo, app.cR, fill=rgb(77, 63, 107), border="white")
+    drawLabel("!", app.cInfo, app.cInfo, fill="white", size = 20)
+    drawCircle(app.cHowTo, app.cInfo, app.cR, fill=rgb(77, 63, 107), border="white")
+    drawLabel("?", app.cHowTo, app.cInfo, fill="white", size = 20)
     if app.gameStart == True:
         drawField(app)
     if app.gameWon == True:
         winCondition(app)
     if app.gameOver == True:
         lossCondition(app)
+    if app.showAboutGame == True:
+        aboutGame(app)
+    if app.showHowToPlay == True:
+        howToPlay(app)
 
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
@@ -294,6 +307,10 @@ def floodFillHelper(board, row, col, oldValue, newValue):
 # ---------------------------------------------------------------------------------------------
 def onMousePress(app, mouseX, mouseY):
     if app.gameOver == False:
+        if distance(app.cInfo, app.cInfo, mouseX, mouseY) <= app.cR:
+            app.showAboutGame = not app.showAboutGame
+        if distance(app.cHowTo, app.cInfo, mouseX, mouseY) <= app.cR:
+            app.showHowToPlay = not app.showHowToPlay
         if (mouseX > app.boardLeft and mouseX < app.boardLeft + app.boardWidth and mouseY > app.boardTop and mouseY < app.boardTop + app.boardHeight):
             xVal, yVal = getBoxToClick(app, mouseX, mouseY)
             if app.gameStart == False:
@@ -350,6 +367,8 @@ def getBoxToClick(app, mouseX, mouseY):
     yVal = (mouseY - app.boardTop) // (app.boardHeight  // app.rows)
     return xVal, yVal
 
+def distance(x0, y0, x1, y1):
+    return ((x1 - x0)**2 + (y1 - y0)**2)**0.5
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
 
@@ -367,10 +386,13 @@ def lossCondition(app):
     drawLabel("oopsie poopsie u lost", app.width // 2, app.height // 2, fill = "white", size = 20, align = "center")
 
 def aboutGame(app):
-    pass
+    drawRect(app.width // 2, app.height // 2, app.width*3 // 4, app.height*3 // 4, fill = "purple", opacity = 80, align = "center")
+    drawLabel("information on game dev (have't finalized this yet!)", app.width // 2, app.height // 2, fill = "white", size = 20, align = "center")
 
 def howToPlay(app):
-    pass
+    drawRect(app.width // 2, app.height // 2, app.width*3 // 4, app.height*3 // 4, fill = "purple", opacity = 80, align = "center")
+    drawLabel("information on how to play the game (have't finalized this yet!)", app.width // 2, app.height // 2, fill = "white", size = 20, align = "center")
+
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
 

@@ -264,6 +264,32 @@ class Safe:
 
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
+# FLOOD FILL (BASED HEAVILY ON CS ACADEMY TUTORIAL)
+# ---------------------------------------------------------------------------------------------
+def floodFill(app, row, col):
+    oldValue = app.field[(row, col)].getState()
+    newValue = "uncovered"
+    if oldValue != newValue:
+        floodFillHelper(app.board, row, col, oldValue, newValue)
+
+def floodFillHelper(board, row, col, oldValue, newValue):
+    # rows, cols = len(board), len(board[0])
+    if ((row < 0) or (row >= app.cols) or
+        (col < 0) or (col >= app.rows)
+        (determineNumber(app, row, col) != 0)):
+        return
+    else:
+        app.field[(row, col)].setState(newValue)
+        floodFillHelper(board, row-1, col, oldValue, newValue) # up
+        floodFillHelper(board, row+1, col, oldValue, newValue) # down
+        floodFillHelper(board, row, col-1, oldValue, newValue) # left
+        floodFillHelper(board, row, col+1, oldValue, newValue) # right
+
+# ---------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------
 # MOUSE/KEY FUNCTIONS
 # ---------------------------------------------------------------------------------------------
 def onMousePress(app, mouseX, mouseY):
@@ -290,6 +316,9 @@ def onMousePress(app, mouseX, mouseY):
                     app.flagsPlaced.remove((xVal, yVal))
                 (app.field[(xVal, yVal)]).setState("uncovered")
                 app.uncover == False
+                if determineNumber(app, xVal, yVal) == 0:
+                    floodFill(app, xVal, yVal)
+                    print("yeeee")
                 if (xVal, yVal) in app.mineLocations:
                     app.gameOver = True
                     print("oops")

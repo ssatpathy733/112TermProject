@@ -51,7 +51,7 @@ def firstClick(app, clickX, clickY):
         toAddY = randrange(-1*(app.rows // 3), app.rows // 3)
         if toAddY != 0 and isLegalCol(app, toAddY, clickY):
             firstMineY = clickY + toAddY
-    # print(firstMineX, firstMineY)
+    print(firstMineX, firstMineY)
     app.firstMineCoords = (firstMineX, firstMineY)
     otherMineX = None
     otherMineY = None
@@ -169,18 +169,21 @@ def drawField(app):
     for row in range(app.rows):
         for col in range(app.cols):
             # print((app.field[(row, col)]).getState())
+            theFont = "arial"
             if (app.field[(col, row)]).getState() == ("flagged"):
                 label = "F"
+                # chr(0x1f3f1)
+                # theFont = "symbols"
             elif (app.field[(col, row)]).getState() == ("covered"):
                 label = ""
-            else:
+            else: # uncovered
                 if (col, row) in app.mineLocations:
                     label = "No"
                 else:
                     label = determineNumber(app, row, col)
             cellLeft, cellTop = getCellLeftTop(app, row, col)
             cellWidth, cellHeight = getCellSize(app)
-            drawLabel(f"{label}", cellLeft + (cellWidth / 2), cellTop + (cellHeight / 2), align = "center", fill="white")
+            drawLabel(label, cellLeft + (cellWidth / 2), cellTop + (cellHeight / 2), align = "center", fill="white", font=theFont)
     
 def isLegalDirection(app, dX, dY, originalX, originalY):
     newX = originalX + dX
@@ -280,23 +283,31 @@ class Safe:
 # FLOOD FILL (BASED HEAVILY ON CS ACADEMY TUTORIAL)
 # ---------------------------------------------------------------------------------------------
 def floodFill(app, row, col):
+    print("enter ")
     oldValue = app.field[(row, col)].getState()
     newValue = "uncovered"
+    print(oldValue, newValue)
     if oldValue != newValue:
-        floodFillHelper(app.board, row, col, oldValue, newValue)
+        app.field[(row, col)].setState("uncovered")
+        floodFillHelper(app, row, col, oldValue, newValue)
 
-def floodFillHelper(board, row, col, oldValue, newValue):
+def floodFillHelper(app, row, col, oldValue, newValue):
+    print((row, col), determineNumber(app, row, col))
     # rows, cols = len(board), len(board[0])
     if ((row < 0) or (row >= app.cols) or
-        (col < 0) or (col >= app.rows)
+        (col < 0) or (col >= app.rows) or
         (determineNumber(app, row, col) != 0)):
-        return
-    else:
+        print("is not a 0")
+        return 
+    else: 
+        oldValue = app.field[(row, col)].getState()
         app.field[(row, col)].setState(newValue)
-        floodFillHelper(board, row-1, col, oldValue, newValue) # up
-        floodFillHelper(board, row+1, col, oldValue, newValue) # down
-        floodFillHelper(board, row, col-1, oldValue, newValue) # left
-        floodFillHelper(board, row, col+1, oldValue, newValue) # right
+        newValue = "uncovered"
+        print("is a 0")
+        floodFillHelper(app, row-1, col, oldValue, newValue) # up
+        floodFillHelper(app, row+1, col, oldValue, newValue) # down
+        floodFillHelper(app, row, col-1, oldValue, newValue) # left
+        floodFillHelper(app, row, col+1, oldValue, newValue) # right
 
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
@@ -331,14 +342,15 @@ def onMousePress(app, mouseX, mouseY):
             if app.uncover == True:
                 if (app.field[(xVal, yVal)]).getState() == "flagged":
                     app.flagsPlaced.remove((xVal, yVal))
+                if determineNumber(app, yVal, xVal) == 0:
+                    # floodFill(app, yVal, xVal)
+                    print("yeeee")
                 (app.field[(xVal, yVal)]).setState("uncovered")
                 app.uncover == False
-                if determineNumber(app, xVal, yVal) == 0:
-                    floodFill(app, xVal, yVal)
-                    print("yeeee")
                 if (xVal, yVal) in app.mineLocations:
                     app.gameOver = True
                     print("oops")
+                
             app.flagsLeft = app.numMines - len(app.flagsPlaced) 
         count = 0
         for theX, theY in set(app.mineLocations):

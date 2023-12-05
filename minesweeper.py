@@ -10,7 +10,7 @@ from random import *
 # BUILT-IN APP FUNCTIONS
 # ---------------------------------------------------------------------------------------------
 def onAppStart(app):
-    app.rows = 12
+    app.rows = 10
     app.cols = 10
     app.boardLeft = 75 
     app.boardTop = 80
@@ -44,11 +44,11 @@ def firstClick(app, clickX, clickY):
     firstMineX = None
     firstMineY = None
     while firstMineX == None:
-        toAddX = randrange(-1*(app.cols // 3), app.cols // 3)
+        toAddX = randrange(-1*(app.cols // 5), app.cols // 5)
         if toAddX != 0 and isLegalCol(app, toAddX, clickX):
             firstMineX = clickX + toAddX
     while firstMineY == None:
-        toAddY = randrange(-1*(app.rows // 3), app.rows // 3)
+        toAddY = randrange(-1*(app.rows // 5), app.rows // 5)
         if toAddY != 0 and isLegalCol(app, toAddY, clickY):
             firstMineY = clickY + toAddY
     print(firstMineX, firstMineY)
@@ -170,20 +170,26 @@ def drawField(app):
         for col in range(app.cols):
             # print((app.field[(row, col)]).getState())
             theFont = "arial"
+            theSize = 60
+            color = "white"
             if (app.field[(col, row)]).getState() == ("flagged"):
-                label = "F"
+                label = "O"
+                color = rgb(40, 252, 3)
+                theSize = 60
                 # chr(0x1f3f1)
                 # theFont = "symbols"
             elif (app.field[(col, row)]).getState() == ("covered"):
                 label = ""
             else: # uncovered
                 if (col, row) in app.mineLocations:
-                    label = "No"
+                    label = "O"
+                    color = "red"
+                    theSize = 60
                 else:
                     label = determineNumber(app, row, col)
             cellLeft, cellTop = getCellLeftTop(app, row, col)
             cellWidth, cellHeight = getCellSize(app)
-            drawLabel(label, cellLeft + (cellWidth / 2), cellTop + (cellHeight / 2), align = "center", fill="white", font=theFont)
+            drawLabel(label, cellLeft + (cellWidth / 2), cellTop + (cellHeight / 2), align = "center", fill=color, font=theFont, size=theSize)
     
 def isLegalDirection(app, dX, dY, originalX, originalY):
     newX = originalX + dX
@@ -282,32 +288,34 @@ class Safe:
 # ---------------------------------------------------------------------------------------------
 # FLOOD FILL (BASED HEAVILY ON CS ACADEMY TUTORIAL)
 # ---------------------------------------------------------------------------------------------
-def floodFill(app, row, col):
-    print("enter ")
-    oldValue = app.field[(row, col)].getState()
-    newValue = "uncovered"
-    print(oldValue, newValue)
-    if oldValue != newValue:
-        app.field[(row, col)].setState("uncovered")
-        floodFillHelper(app, row, col, oldValue, newValue)
 
-def floodFillHelper(app, row, col, oldValue, newValue):
-    print((row, col), determineNumber(app, row, col))
-    # rows, cols = len(board), len(board[0])
+def floodFill(app, row, col, oldValue, newValue):
+    if ((row < 0) or (row >= app.cols) or
+        (col < 0) or (col >= app.rows)):
+        return
+    oldValue = app.field[(col, row)].getState()
+    newValue = "uncovered"
+    if oldValue == "covered":
+        app.field[(col, row)].setState("uncovered")
+    else:
+        return
+    
     if ((row < 0) or (row >= app.cols) or
         (col < 0) or (col >= app.rows) or
         (determineNumber(app, row, col) != 0)):
-        print("is not a 0")
         return 
     else: 
-        oldValue = app.field[(row, col)].getState()
-        app.field[(row, col)].setState(newValue)
+        oldValue = app.field[(col, row)].getState()
+        print(col, row)
         newValue = "uncovered"
-        print("is a 0")
-        floodFillHelper(app, row-1, col, oldValue, newValue) # up
-        floodFillHelper(app, row+1, col, oldValue, newValue) # down
-        floodFillHelper(app, row, col-1, oldValue, newValue) # left
-        floodFillHelper(app, row, col+1, oldValue, newValue) # right
+        floodFill(app, row-1, col, oldValue, newValue)
+        floodFill(app, row+1, col, oldValue, newValue) 
+        floodFill(app, row, col-1, oldValue, newValue) 
+        floodFill(app, row, col+1, oldValue, newValue)
+        floodFill(app, row+1, col+1, oldValue, newValue)
+        floodFill(app, row-1, col-1, oldValue, newValue)
+        floodFill(app, row-1, col+1, oldValue, newValue)
+        floodFill(app, row+1, col-1, oldValue, newValue)
 
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
@@ -335,22 +343,27 @@ def onMousePress(app, mouseX, mouseY):
             # print(xVal, yVal)
             if app.flagging == True:
                 print(app.field[(xVal, yVal)])
-                (app.field[(xVal, yVal)]).setState("flagged")
-                print((app.field[(xVal, yVal)]).getState())
-                (app.flagsPlaced).add((xVal, yVal))
+                if app.field[(xVal, yVal)].getState() == "flagged":
+                    (app.field[(xVal, yVal)]).setState("covered")
+                    (app.flagsPlaced).remove((xVal, yVal))
+                else:
+                    (app.field[(xVal, yVal)]).setState("flagged")
+                    print((app.field[(xVal, yVal)]).getState())
+                    (app.flagsPlaced).add((xVal, yVal))
                 app.flagging = False
             if app.uncover == True:
-                if (app.field[(xVal, yVal)]).getState() == "flagged":
-                    app.flagsPlaced.remove((xVal, yVal))
-                if determineNumber(app, yVal, xVal) == 0:
-                    # floodFill(app, yVal, xVal)
-                    print("yeeee")
-                (app.field[(xVal, yVal)]).setState("uncovered")
-                app.uncover == False
-                if (xVal, yVal) in app.mineLocations:
-                    app.gameOver = True
-                    print("oops")
-                
+                if (app.field[(xVal, yVal)]).getState() != "flagged":
+                    if determineNumber(app, yVal, xVal) == 0:
+                        oldValue = app.field[(xVal, yVal)].getState()
+                        newValue = "uncovered"
+                        floodFill(app, yVal, xVal, oldValue, newValue)
+                        print("yeeee")
+                    (app.field[(xVal, yVal)]).setState("uncovered")
+                    app.uncover == False
+                    if (xVal, yVal) in app.mineLocations:
+                        app.gameOver = True
+                        print("oops")
+            print(determineNumber(app, xVal, yVal), xVal, yVal)
             app.flagsLeft = app.numMines - len(app.flagsPlaced) 
         count = 0
         for theX, theY in set(app.mineLocations):
@@ -365,6 +378,7 @@ def onKeyHold(app, keys):
             app.uncover = False
             app.flagging = True
         elif len(keys) == 1 and "u" in keys:
+            app.flagging = False
             app.uncover = True
 
 # ---------------------------------------------------------------------------------------------
@@ -402,8 +416,14 @@ def aboutGame(app):
     drawLabel("information on game dev (have't finalized this yet!)", app.width // 2, app.height // 2, fill = "white", size = 20, align = "center")
 
 def howToPlay(app):
+    label = '''
+            press "u" to uncover boxes
+            press and hold "f" to flag
+            you must unflag before uncovering
+            have fun!!!
+            '''
     drawRect(app.width // 2, app.height // 2, app.width*3 // 4, app.height*3 // 4, fill = "purple", opacity = 80, align = "center")
-    drawLabel("information on how to play the game (have't finalized this yet!)", app.width // 2, app.height // 2, fill = "white", size = 20, align = "center")
+    drawLabel(label, app.width // 2, app.height // 2, fill = "white", size = 20, align = "center")
 
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------

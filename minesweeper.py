@@ -174,7 +174,7 @@ def drawField(app):
             color = "white"
             if (app.field[(col, row)]).getState() == ("flagged"):
                 label = "O"
-                color = rgb(40, 252, 3)
+                color = rgb(239, 56, 245)
                 theSize = 60
                 # chr(0x1f3f1)
                 # theFont = "symbols"
@@ -187,6 +187,9 @@ def drawField(app):
                     theSize = 60
                 else:
                     label = determineNumber(app, row, col)
+                    if label == 0:
+                        label = ""
+                app.board[row][col] = rgb(163, 110, 204)
             cellLeft, cellTop = getCellLeftTop(app, row, col)
             cellWidth, cellHeight = getCellSize(app)
             drawLabel(label, cellLeft + (cellWidth / 2), cellTop + (cellHeight / 2), align = "center", fill=color, font=theFont, size=theSize)
@@ -416,14 +419,10 @@ def aboutGame(app):
     drawLabel("information on game dev (have't finalized this yet!)", app.width // 2, app.height // 2, fill = "white", size = 20, align = "center")
 
 def howToPlay(app):
-    label = '''
-            press "u" to uncover boxes
-            press and hold "f" to flag
-            you must unflag before uncovering
-            have fun!!!
-            '''
+    labelLines = ["press 'u' to uncover boxes", "press and hold 'f' to flag", "you must unflag before uncovering", "have fun!!!"]
     drawRect(app.width // 2, app.height // 2, app.width*3 // 4, app.height*3 // 4, fill = "purple", opacity = 80, align = "center")
-    drawLabel(label, app.width // 2, app.height // 2, fill = "white", size = 20, align = "center")
+    for label in range(len(labelLines)):
+        drawLabel(labelLines[label], app.width // 2, (app.height // 2 - 60) + (label * 30), fill = "white", size = 30, align = "center")
 
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------

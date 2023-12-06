@@ -2,8 +2,13 @@ from cmu_graphics import *
 from PIL import *
 from random import *
 
-# flood fill
-# 3 difficulties
+# ai hint
+# restart button
+# display what mode
+# add cat image
+# add game dev screen
+# add title page
+# two classes
 
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
@@ -37,54 +42,22 @@ def onAppStart(app):
     app.cInfo = 50
     app.cHowTo = app.width - 50
     app.cR = 30
-    # minePlacement(app)
-    # createField(app)
-
-def firstClick(app, clickX, clickY):
-    firstMineX = None
-    firstMineY = None
-    while firstMineX == None:
-        toAddX = randrange(-1*(app.cols // 5), app.cols // 5)
-        if toAddX != 0 and isLegalCol(app, toAddX, clickX):
-            firstMineX = clickX + toAddX
-    while firstMineY == None:
-        toAddY = randrange(-1*(app.rows // 5), app.rows // 5)
-        if toAddY != 0 and isLegalCol(app, toAddY, clickY):
-            firstMineY = clickY + toAddY
-    print(firstMineX, firstMineY)
-    app.firstMineCoords = (firstMineX, firstMineY)
-    otherMineX = None
-    otherMineY = None
-    if (clickX + (-1 * firstMineX)) < 0:
-        otherMineX = 0
-    elif (clickX + (-1 * firstMineX)) > app.cols:
-        otherMineX = 0
-    else:
-        otherMineX = clickX + (-1 * firstMineX)
-    if (clickX + (-1 * firstMineX)) < 0:
-        otherMineY = 0
-    elif (clickX + (-1 * firstMineX)) > app.rows:
-        otherMineY = 0
-    else:
-        otherMineY = (clickX + (-1 * firstMineX))
-    app.oppositeMineCoords = (otherMineX, otherMineY)
-    print(app.firstMineCoords)
-    print(app.oppositeMineCoords)
-    minePlacement(app)
-    createField(app)
-    app.gameStart = True
+    app.hintCount = 0
+    app.currHelperMove = False
+    app.currMode = None
 
 def redrawAll(app):
     drawRect(0, 0, app.width, app.height, fill=rgb(151, 182, 232))
     drawRect(app.boardLeft, app.boardTop, app.boardWidth, app.boardHeight, fill=rgb(77, 63, 107))
-    drawLabel("MINESWEEPER!", app.width // 2, 20, align="center", size = 45, fill="white", border=rgb(77, 63, 107))
-    drawLabel(f"Flags left: {app.flagsLeft}", app.width // 2, 55, align="center", fill="white", size = 25)
+    drawLabel("MINESWEEPER!", app.width // 2, 20, align="center", size = 45, fill="white", border=rgb(77, 63, 107), font="grenze")
+    drawLabel(f"FLAGS LEFT: {app.flagsLeft}", app.width // 2, 55, align="center", fill="white", size = 25, font="script")
     drawBoard(app)
     drawBoardBorder(app)
     drawCircle(app.cInfo, app.cInfo, app.cR, fill=rgb(77, 63, 107), border="white")
     drawLabel("!", app.cInfo, app.cInfo, fill="white", size = 20)
     drawCircle(app.cHowTo, app.cInfo, app.cR, fill=rgb(77, 63, 107), border="white")
     drawLabel("?", app.cHowTo, app.cInfo, fill="white", size = 20)
+    drawCurrMode(app)
     if app.gameStart == True:
         drawField(app)
     if app.gameWon == True:
@@ -146,8 +119,6 @@ def minePlacement(app):
     for col in range(min(firstX, otherX), max(firstX, otherX) + 1):
         for row in range(min(firstY, otherY), max(firstY, otherY) + 1):
             app.field[(row, col)] = Safe(col, row)
-            print(app.field[(row, col)])
-    # print(app.field)
     while len(app.mineLocations) < app.numMines:
         randRow = randrange(0, app.cols)
         randCol = randrange(0, app.rows)
@@ -168,7 +139,6 @@ def createField(app):
 def drawField(app):
     for row in range(app.rows):
         for col in range(app.cols):
-            # print((app.field[(row, col)]).getState())
             theFont = "arial"
             theSize = 60
             color = "white"
@@ -176,11 +146,10 @@ def drawField(app):
                 label = "O"
                 color = rgb(239, 56, 245)
                 theSize = 60
-                # chr(0x1f3f1)
-                # theFont = "symbols"
             elif (app.field[(col, row)]).getState() == ("covered"):
                 label = ""
             else: # uncovered
+                app.board[row][col] = rgb(163, 110, 204)
                 if (col, row) in app.mineLocations:
                     label = "O"
                     color = "red"
@@ -189,7 +158,7 @@ def drawField(app):
                     label = determineNumber(app, row, col)
                     if label == 0:
                         label = ""
-                app.board[row][col] = rgb(163, 110, 204)
+                
             cellLeft, cellTop = getCellLeftTop(app, row, col)
             cellWidth, cellHeight = getCellSize(app)
             drawLabel(label, cellLeft + (cellWidth / 2), cellTop + (cellHeight / 2), align = "center", fill=color, font=theFont, size=theSize)
@@ -221,7 +190,6 @@ def determineNumber(app, currRow, currCol):
             locationY, locationX = currRow + dX, currCol + dY
             if (locationX, locationY) in app.mineLocations:
                 count += 1
-                # print(f"the locations {(locationX, locationY)}")
     return count
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
@@ -239,6 +207,7 @@ class Mine:
         self.locX = locX
         self.locY = locY
         self.state = "covered"
+        self.flagStatus = True
 
     def __repr__(self):
         return (f"Mine - {self.locX, self.locY}")
@@ -256,6 +225,12 @@ class Mine:
 
     def getState(self):
         return self.state
+    
+    def canFlag(self):
+        return self.flagStatus
+    
+    def changeFlagState(self, status):
+        self.flagStatus = status
 # ---------------------------------------------------------------------------------------------
 # SAFE CLASS
 # ---------------------------------------------------------------------------------------------
@@ -264,6 +239,7 @@ class Safe:
         self.locX = locX
         self.locY = locY
         self.state = "covered"
+        self.flagStatus = True
 
     def __repr__(self):
         return (f"Safe - {self.locX, self.locY}")
@@ -281,6 +257,12 @@ class Safe:
 
     def getState(self):
         return self.state
+    
+    def canFlag(self):
+        return self.flagStatus
+    
+    def changeFlagState(self, status):
+        self.flagStatus = status
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
 
@@ -306,10 +288,11 @@ def floodFill(app, row, col, oldValue, newValue):
     if ((row < 0) or (row >= app.cols) or
         (col < 0) or (col >= app.rows) or
         (determineNumber(app, row, col) != 0)):
+        app.board[row][col] = rgb(163, 110, 204)
         return 
     else: 
         oldValue = app.field[(col, row)].getState()
-        print(col, row)
+        app.board[row][col] = rgb(163, 110, 204)
         newValue = "uncovered"
         floodFill(app, row-1, col, oldValue, newValue)
         floodFill(app, row+1, col, oldValue, newValue) 
@@ -328,11 +311,7 @@ def floodFill(app, row, col, oldValue, newValue):
 # MOUSE/KEY FUNCTIONS
 # ---------------------------------------------------------------------------------------------
 def onMousePress(app, mouseX, mouseY):
-    if app.gameOver == False:
-        if distance(app.cInfo, app.cInfo, mouseX, mouseY) <= app.cR:
-            app.showAboutGame = not app.showAboutGame
-        if distance(app.cHowTo, app.cInfo, mouseX, mouseY) <= app.cR:
-            app.showHowToPlay = not app.showHowToPlay
+    if app.gameOver == False and app.showAboutGame == False and app.showHowToPlay == False:
         if (mouseX > app.boardLeft and mouseX < app.boardLeft + app.boardWidth and mouseY > app.boardTop and mouseY < app.boardTop + app.boardHeight):
             xVal, yVal = getBoxToClick(app, mouseX, mouseY)
             if app.gameStart == False:
@@ -343,30 +322,28 @@ def onMousePress(app, mouseX, mouseY):
                         app.field[(locationY, locationX)] = Safe(locationY, locationX)
                 firstClick(app, xVal, yVal)
                 app.gameStart = True
-            # print(xVal, yVal)
-            if app.flagging == True:
-                print(app.field[(xVal, yVal)])
+            if app.flagging == True and app.field[(xVal, yVal)].canFlag():
                 if app.field[(xVal, yVal)].getState() == "flagged":
                     (app.field[(xVal, yVal)]).setState("covered")
                     (app.flagsPlaced).remove((xVal, yVal))
                 else:
                     (app.field[(xVal, yVal)]).setState("flagged")
-                    print((app.field[(xVal, yVal)]).getState())
                     (app.flagsPlaced).add((xVal, yVal))
                 app.flagging = False
-            if app.uncover == True:
+                app.currMode = None
+            if app.uncover == True and (app.field[(xVal, yVal)]).getState() != "flagged" :
+                app.board[yVal][xVal] = rgb(163, 110, 204)
                 if (app.field[(xVal, yVal)]).getState() != "flagged":
-                    if determineNumber(app, yVal, xVal) == 0:
+                    col, row = yVal, xVal
+                    if determineNumber(app, col, row) == 0:
                         oldValue = app.field[(xVal, yVal)].getState()
                         newValue = "uncovered"
-                        floodFill(app, yVal, xVal, oldValue, newValue)
-                        print("yeeee")
+                        floodFill(app, col, row, oldValue, newValue)
                     (app.field[(xVal, yVal)]).setState("uncovered")
+                    (app.field[(xVal, yVal)]).changeFlagState(False)
                     app.uncover == False
                     if (xVal, yVal) in app.mineLocations:
                         app.gameOver = True
-                        print("oops")
-            print(determineNumber(app, xVal, yVal), xVal, yVal)
             app.flagsLeft = app.numMines - len(app.flagsPlaced) 
         count = 0
         for theX, theY in set(app.mineLocations):
@@ -374,14 +351,20 @@ def onMousePress(app, mouseX, mouseY):
                 count += 1
         if count == app.numMines:
             app.gameWon = True
+    if distance(app.cInfo, app.cInfo, mouseX, mouseY) <= app.cR:
+        app.showAboutGame = not app.showAboutGame
+    if distance(app.cHowTo, app.cInfo, mouseX, mouseY) <= app.cR:
+        app.showHowToPlay = not app.showHowToPlay
 
 def onKeyHold(app, keys):
     if app.gameOver == False:
         if len(keys) == 1 and "f" in keys:
             app.uncover = False
+            app.currMode = "flagging!"
             app.flagging = True
         elif len(keys) == 1 and "u" in keys:
             app.flagging = False
+            app.currMode = "uncovering!"
             app.uncover = True
 
 # ---------------------------------------------------------------------------------------------
@@ -398,6 +381,53 @@ def getBoxToClick(app, mouseX, mouseY):
 
 def distance(x0, y0, x1, y1):
     return ((x1 - x0)**2 + (y1 - y0)**2)**0.5
+# ---------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------
+# EXTRA FUNCTIONS
+# ---------------------------------------------------------------------------------------------
+
+def firstClick(app, clickX, clickY):
+    firstMineX = None
+    firstMineY = None
+    while firstMineX == None:
+        toAddX = randrange(-1*(app.cols // 5), app.cols // 5)
+        if toAddX != 0 and isLegalCol(app, toAddX, clickX):
+            firstMineX = clickX + toAddX
+    while firstMineY == None:
+        toAddY = randrange(-1*(app.rows // 5), app.rows // 5)
+        if toAddY != 0 and isLegalCol(app, toAddY, clickY):
+            firstMineY = clickY + toAddY
+    app.firstMineCoords = (firstMineX, firstMineY)
+    otherMineX = None
+    otherMineY = None
+    if (clickX + (-1 * firstMineX)) < 0:
+        otherMineX = 0
+    elif (clickX + (-1 * firstMineX)) > app.cols:
+        otherMineX = 0
+    else:
+        otherMineX = clickX + (-1 * firstMineX)
+    if (clickX + (-1 * firstMineX)) < 0:
+        otherMineY = 0
+    elif (clickX + (-1 * firstMineX)) > app.rows:
+        otherMineY = 0
+    else:
+        otherMineY = (clickX + (-1 * firstMineX))
+    app.oppositeMineCoords = (otherMineX, otherMineY)
+    minePlacement(app)
+    createField(app)
+    app.gameStart = True
+
+def drawCurrMode(app):
+    drawLabel(f"CURRENT MODE: {app.currMode}", app.width // 2, app.height - 40, fill = "white", size = 20, align = "center")
+
+
+def makeHelperMove(app):
+    # for col in range(app.rows):
+    #     for row in range(app.cols):
+    pass
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
 
@@ -419,17 +449,18 @@ def aboutGame(app):
     drawLabel("information on game dev (have't finalized this yet!)", app.width // 2, app.height // 2, fill = "white", size = 20, align = "center")
 
 def howToPlay(app):
-    labelLines = ["press 'u' to uncover boxes", "press and hold 'f' to flag", "you must unflag before uncovering", "have fun!!!"]
-    drawRect(app.width // 2, app.height // 2, app.width*3 // 4, app.height*3 // 4, fill = "purple", opacity = 80, align = "center")
+    labelLines = ["minesweeper is super fun!", "but how do you play you ask?", "you must place flags on all of the mines", "so you know not to click on them", 
+                  "don't blow up the field pls :(", "the numbers tell you how many mines are in", "the boxes immediately surrounding a box", 
+                  "press 'u' to uncover boxes", "press and hold 'f' to flag", "you must unflag before uncovering", "have fun!!!"]
+    drawRect(app.width // 2, app.height // 2, app.width*3 // 4, app.height*3 // 4, fill = "purple", opacity = 90, align = "center")
     for label in range(len(labelLines)):
-        drawLabel(labelLines[label], app.width // 2, (app.height // 2 - 60) + (label * 30), fill = "white", size = 30, align = "center")
+        drawLabel(labelLines[label], app.width // 2, (app.height // 2 - 200) + (label * 40), fill = "white", size = 30, align = "center", font="cursive", bold=True)
 
 # ---------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------
 
 def main():
     runApp()
-    print(app.mineLocations)
     
 
 main()
